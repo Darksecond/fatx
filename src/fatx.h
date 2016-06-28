@@ -58,6 +58,7 @@ struct fatx_fs {
     size_t      root_size;
     size_t      cluster_offset;
     size_t      bytes_per_cluster;
+    size_t      bytes_per_sector;
     FILE       *log_handle;
     int         log_level;
 };
@@ -90,7 +91,7 @@ struct fatx_attr {
     struct fatx_ts accessed;
 };
 
-int fatx_open_device(struct fatx_fs *fs, char const *path, size_t offset, size_t size);
+int fatx_open_device(struct fatx_fs *fs, char const *path, size_t offset, size_t size, size_t bytes_per_sector);
 int fatx_close_device(struct fatx_fs *fs);
 int fatx_open_dir(struct fatx_fs *fs, char const *path, struct fatx_dir *dir);
 int fatx_read_dir(struct fatx_fs *fs, struct fatx_dir *dir, struct fatx_dirent *entry, struct fatx_attr *attr, struct fatx_dirent **result);

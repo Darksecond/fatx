@@ -39,6 +39,7 @@ enum {
     FATX_FUSE_OPT_KEY_DRIVE,
     FATX_FUSE_OPT_KEY_OFFSET,
     FATX_FUSE_OPT_KEY_SIZE,
+    FATX_FUSE_OPT_KEY_SECTORSIZE,
     FATX_FUSE_OPT_KEY_LOG,
     FATX_FUSE_OPT_KEY_LOGLEVEL,
 };
@@ -68,6 +69,7 @@ struct fatx_fuse_private_data {
     char            mount_partition_drive;
     size_t          mount_partition_offset;
     size_t          mount_partition_size;
+    size_t          mount_sector_size;
     FILE           *log_handle;
     int             log_level;
 };
@@ -469,6 +471,11 @@ int fatx_fuse_opt_proc(void *data, const char *arg, int key, struct fuse_args *o
         pd->mount_partition_size = strtol(arg, NULL, 0);
         return 0;
 
+    case FATX_FUSE_OPT_KEY_SECTORSIZE:
+        arg = fatx_fuse_opt_consume_key(arg);
+        pd->mount_sector_size = strtol(arg, NULL, 0);
+        return 0;
+
     case FATX_FUSE_OPT_KEY_LOG:
         pd->log_path = fatx_fuse_opt_consume_key(arg);
         return 0;
@@ -518,6 +525,7 @@ void fatx_fuse_print_usage(void)
                     "    --drive=<letter>       mount a partition by its drive letter\n"
                     "    --offset=<offset>      specify the offset (in bytes) of a partition manually\n"
                     "    --size=<size>          specify the size (in bytes) of a partition manually\n"
+                    "    --sectorsize=<size>    specify the size of a sector (in bytes)\n"
                     "    --log=<log path>       enable fatxfs logging\n"
                     "    --loglevel=<level>     control the log output level (a higher value yields more output)\n\n");
 
@@ -546,6 +554,7 @@ int main(int argc, char *argv[])
         FUSE_OPT_KEY("--version",   FATX_FUSE_OPT_KEY_VERSION),
         FUSE_OPT_KEY("--drive=",    FATX_FUSE_OPT_KEY_DRIVE),
         FUSE_OPT_KEY("--offset=",   FATX_FUSE_OPT_KEY_OFFSET),
+        FUSE_OPT_KEY("--sectorsize=", FATX_FUSE_OPT_KEY_SECTORSIZE),
         FUSE_OPT_KEY("--size=",     FATX_FUSE_OPT_KEY_SIZE),
         FUSE_OPT_KEY("--log=",      FATX_FUSE_OPT_KEY_LOG),
         FUSE_OPT_KEY("--loglevel=", FATX_FUSE_OPT_KEY_LOGLEVEL),
@@ -556,6 +565,7 @@ int main(int argc, char *argv[])
     memset(&pd, 0, sizeof(struct fatx_fuse_private_data));
     pd.mount_partition_size   = -1;
     pd.mount_partition_offset = -1;
+    pd.mount_sector_size      = -1;
     pd.log_level              = FATX_LOG_LEVEL_INFO;
 
     /* Parse command line arguments. */
@@ -634,11 +644,18 @@ int main(int argc, char *argv[])
         fatx_log_init(pd.fs, pd.log_handle, pd.log_level);
     }
 
+    if (pd.mount_sector_size == -1)
+    {
+        pd.mount_sector_size = 512;
+    }
+
     /* Open the device */
     status = fatx_open_device(pd.fs,
                               pd.device_path,
                               pd.mount_partition_offset,
-                              pd.mount_partition_size);
+                              pd.mount_partition_size,
+                              pd.mount_sector_size
+                              );
     if (status)
     {
         fprintf(stderr, "failed to initialize the filesystem\n");
